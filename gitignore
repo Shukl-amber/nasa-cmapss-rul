@@ -1,0 +1,25 @@
+# dataset files — do not commit
+*.txt
+*.csv
+*.zip
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.env
+env/
+ml-env/
+*.egg-info/
+
+# jupyter
+.ipynb_checkpoints/
+
+# os
+.DS_Store
+Thumbs.db
+
+# models
+*.h5
+*.keras
+*.pkl
