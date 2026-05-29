@@ -10,10 +10,18 @@ Each folder is a self-contained notebook for one sub-dataset.
 
 | Dataset | Conditions | Test RMSE | Status |
 |---------|------------|-----------|--------|
-| FD001   | 1 op condition, 1 fault mode | 14.85 cycles | ✅ Done |
+| FD001   | 1 op condition, 1 fault mode | 14.77 cycles | ✅ Done |
 | FD002   | 6 op conditions, 1 fault mode | — | 🔜 Upcoming |
 | FD003   | 1 op condition, 2 fault modes | — | 🔜 Upcoming |
 | FD004   | 6 op conditions, 2 fault modes | — | 🔜 Upcoming |
+
+### FD001 performance snapshot
+
+| Model | Val RMSE | Val MAE | Test RMSE | Test MAE |
+|------|----------|---------|-----------|---------|
+| Main LSTM | 12.02 | 9.00 | 14.77 | 11.09 |
+| RF (agg features) | 13.05 | 9.97 | 13.45 | 9.81 |
+| Stacked RF | 13.45 | 9.63 | 14.72 | 11.03 |
 
 ---
 
@@ -27,6 +35,24 @@ Each folder is a self-contained notebook for one sub-dataset.
 - Sliding window sequence construction → shape `(N, W, F)`
 - Two-layer LSTM with Dropout
 - Evaluation with RMSE and MAE on held-out test engines
+
+## Experiments in this repo
+
+This repository contains a small experiment comparing three approaches on FD001:
+
+- A Random Forest baseline trained on aggregated window features (mean, std, min, max, last, slope per sensor).
+- A two-layer LSTM that predicts RUL from raw windows.
+- A stacked model: the LSTM's prediction is added as a feature to the Random Forest (used as a quick test of stacking).
+
+Latest FD001 run:
+
+| Model | Val RMSE | Val MAE | Test RMSE | Test MAE |
+|------|----------|---------|-----------|---------|
+| Main LSTM | 12.02 | 9.00 | 14.77 | 11.09 |
+| RF (agg features) | 13.05 | 9.97 | 13.45 | 9.81 |
+| Stacked RF | 13.45 | 9.63 | 14.72 | 11.03 |
+
+These experiments were performed for testing and model-prototyping only; see `FD001/fd001.ipynb` for the evaluation cells and plots.
 
 ---
 
