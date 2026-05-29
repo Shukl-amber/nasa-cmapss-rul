@@ -1,84 +1,77 @@
 # FD001 — RUL Prediction
 
-Single operating condition, single fault mode. The simplest sub-dataset in C-MAPSS and the standard starting point.
+Single operating condition, single fault mode. This notebook predicts remaining useful life for the NASA C-MAPSS FD001 subset.
 
----
+## Summary
 
-## Results
+The notebook:
 
-| Metric | Val | Test |
-|--------|-----|------|
-| RMSE   | 14.20 cycles | 14.85 cycles |
-| MAE    | 10.15 cycles | 11.09 cycles |
+- loads `train_FD001.txt`
+- checks the raw data
+- prints sensor variance in ascending order
+- computes RUL per engine and caps it at 125 cycles
+- drops `os1`, `os2`, `os3`, `s1`, `s5`, `s6`, `s10`, `s16`, `s18`, `s19`
+- splits engines 80/20 for train and validation
+- fits `SimpleImputer` + `StandardScaler` on train only
+- builds windows with `W = 40`
+- trains the main two-layer LSTM
+- evaluates on validation and test sets
+- compares against a Random Forest baseline and a stacked RF + LSTM model
 
-Test RMSE of **14.85 cycles** on 100 unseen engines.
+## Key settings
 
----
+| Setting | Value |
+|--------|-------|
+| Window size | 40 |
+| Train/validation split | 80 / 20 engines |
+| RUL cap | 125 cycles |
 
-## Pipeline
+## Files
 
-```
-train_FD001.txt
-  → assign headers (26 columns)
-  → compute RUL per engine
-  → cap RUL at 125 cycles
-  → drop zero-variance sensors (s1, s5, s6, s10, s16, s18, s19 + os1-3)
-  → split engines: 80 train / 20 val (by engine ID)
-  → fit sklearn Pipeline on train (SimpleImputer → StandardScaler)
-  → transform train and val
-  → sliding windows W=30 → X shape (N, 30, 14)
-  → two-layer LSTM with Dropout
-  → evaluate on test_FD001.txt + RUL_FD001.txt
-```
+Put these beside the notebook:
 
----
+- `train_FD001.txt`
+- `test_FD001.txt`
+- `RUL_FD001.txt`
 
-## Model
+Data source: NASA Prognostics Data Repository
 
-```
-Input       (None, 30, 14)
-LSTM        (None, 30, 64)   return_sequences=True
-Dropout     0.2
-LSTM        (None, 32)
-Dropout     0.2
-Dense       (None, 32)       relu
-Dense       (None, 1)        linear
-```
-
-- Optimizer: Adam
-- Loss: MSE
-- Early stopping: patience=5, restore best weights
-
----
-
-## Training curve
-
-Both train and val loss converge cleanly. No overfitting after RUL capping.
-
----
-
-## Files needed
-
-Place these in this folder before running the notebook:
-
-```
-train_FD001.txt
-test_FD001.txt
-RUL_FD001.txt
-```
-
-Download from:
 https://ti.arc.nasa.gov/tech/dash/groups/pcoe/prognostic-data-repository/
 
----
+## Main model
 
-## Key decisions
+The main LSTM is:
 
-**Why cap RUL at 125?**
-Early in engine life there is no degradation signal. High RUL labels (200–300) are noisy and hurt training. Capping treats all healthy states equally and focuses the model on the degradation phase.
+- `LSTM(64, return_sequences=True)`
+- `Dropout(0.2)`
+- `LSTM(32)`
+- `Dropout(0.2)`
+- `Dense(32, relu)`
+- `Dense(1)`
 
-**Why split by engine ID?**
-Splitting by row would mix early and late cycles from the same engine into train and val. The model would leak future knowledge. Engine-level split is the only honest evaluation.
+Training uses Adam, MSE, and early stopping with `patience=5` and `restore_best_weights=True`.
 
-**Why fit scaler on train only?**
-Fitting on the full dataset lets val/test statistics influence the scaler. This is data leakage. The scaler must only see train data.
+## Extra models
+
+- Random Forest on aggregated window features: mean, std, min, max, last value, and slope.
+- Stacked RF + LSTM: appends the LSTM prediction as an extra feature.
+
+## Performance snapshot
+
+| Model | Val RMSE | Val MAE | Test RMSE | Test MAE |
+|------|----------|---------|-----------|---------|
+| Main LSTM | 12.02 | 9.00 | 14.77 | 11.09 |
+| RF (agg features) | 13.05 | 9.97 | 13.45 | 9.81 |
+| Stacked RF | 13.45 | 9.63 | 14.72 | 11.03 |
+
+## What we tried
+
+We also tested different hyperparameters, fixed vs decaying learning rates, RMSE-focused tuning, and simpler neural networks, but each of those setups produced higher error than the final two-layer LSTM.
+
+## Reported results
+
+The notebook also includes plots for training curves, validation predictions, test predictions, residuals, and model comparisons.
+
+## Notes
+
+The variance cell is diagnostic only; the actual drop step still uses the hardcoded `DROP_COLS` list. The scaler is fit on train only to avoid leakage, and the main evaluation model is the two-layer LSTM v2.
