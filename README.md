@@ -54,10 +54,12 @@ Do not commit the data files — they are in `.gitignore`.
 git clone https://github.com/YOUR_USERNAME/nasa-cmapss-rul.git
 cd nasa-cmapss-rul
 
-python3 -m venv env
-source env/bin/activate
+uv venv .venv --python "C:\Program Files\Python312\python.exe"
 
-pip install -r requirements.txt
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt
 
 jupyter notebook
 ```
